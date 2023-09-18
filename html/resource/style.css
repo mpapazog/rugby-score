@@ -1,0 +1,556 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto:700');
+@import url('https://fonts.googleapis.com/css?family=Fira+Sans+Condensed');
+
+.chroma-key {
+    background-color: transparent;
+    /*background-image: url("../images/rugby_pitch.jpg");*/
+}
+
+.test-bg {
+    background-image: url("testbg.jpg");
+}
+
+.font-style {
+  font-family: "Roboto", Sans-serif;
+  font-weight: 700;
+}
+
+.font-large {
+    font-size: 60px;
+}
+
+.font-medium {
+    font-size: 48px;
+}
+.font-small {
+    font-size: 24px;
+}
+
+.log-label {
+    position: absolute;
+    top: 5px;
+    left: 5px;    
+}
+
+.tool-bar {
+    position: absolute;
+    text-align: center;
+    width: 100%;  
+    top: 3%;
+    left: 0px;    
+}
+
+.team-panel-container {
+    position: absolute;
+    text-align: center;
+    width: 50%;
+}
+
+.team-panel-container-home {
+    top: 10%;
+    left: 0px;
+}
+
+.team-panel-container-away {
+    top: 10%;
+    right: 0px;
+}
+
+.name-block {
+    height: 80px;
+    line-height: 80px;
+}
+
+.padded-table {
+    display: inline-block;
+}
+
+.padded-table td {
+    padding-right: 10px;
+    padding-left: 10px;
+    vertical-align: middle;
+}
+
+.cell-left-align {
+    text-align: left;
+}
+
+.team-panel-table {
+    display: inline-block;
+}
+
+.team-panel-table div {
+    width:120px;
+}
+
+.score-panel {
+    position: inherit;
+    top: 120px;
+    width:100%;
+    text-align: center;
+}
+
+.clock-panel-container {
+    position: absolute;
+    left: 0px;
+    top: 60%;
+    width: 100%;
+    text-align: center;
+}
+
+.spacer {
+    width: 150px;
+}
+
+.vertical-spacer {
+    height: 50px;
+}
+
+
+.button-thin {
+    height: 40px;
+    width: 40px;
+}
+
+.button-medium {
+    height: 40px;
+    width: 90px;
+}
+
+.button-wide {
+    height: 40px;
+    width: 160px;
+}
+
+.clock-grid-width {
+    width: 280px;
+}
+
+.new-game-container {
+    position: absolute;
+    top: 10%;
+    left: 0px;
+    width: 100%;
+    text-align: center;
+}
+
+.new-game-menu {
+    display: inline-block;
+}
+
+.operator-logo {
+    height: 50px;
+    width: 50px;
+    background-size: 100% 100%;
+}
+
+.score-vertical-separator {
+    height: 30px;
+}
+
+/* STREAM OVERLAY STUFF */
+
+.overlay-popup {
+    position: absolute;
+    top:75px; 
+    left: 50px;
+    height: 0px; /* Animate to 50px*/
+    width: 220px;
+    line-height: 55px;
+    background-image: linear-gradient(darkgoldenrod, orange);
+    border-radius: 5px;
+    text-align: center;
+    font-family: "Roboto", Sans-serif;
+    font-weight: 700;
+    font-size: 30px;
+    color: white;
+}
+
+.overlay-main-panel {
+    background-image: linear-gradient(to bottom right, #606060, #101010);
+    border-radius: 5px;
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 730px;
+    height: 60px;
+    line-height: 60px;
+}
+
+.overlay-block {
+    position: inherit;
+    text-align: center;
+    font-family: "Roboto", Sans-serif;
+    font-weight: 700;
+    font-size: 36px;
+    color: white;
+}
+
+.overlay-period {
+    left: 10px;
+    width: 60px;
+}
+
+.overlay-clock {
+    background-color: #757575;
+    height: 50px;
+    line-height: 50px;
+    left: 80px;
+    top: 5px;
+    width: 120px;
+    border-radius: 5px;
+}
+
+.overlay-home-colour {
+    width: 20px;
+    height: 46px;
+    left: 220px;
+    top: 5px;
+    border:2px solid #909090;
+}
+
+.overlay-home-logo {
+    width: 48px;
+    height: 48px;
+    left: 250px;
+    top: 5px;
+    background-size: 100% 100%;
+}
+
+.overlay-home-name {
+    left: 300px;
+}
+
+.overlay-home-score {
+    left: 400px;  
+}
+
+.overlay-away-colour {
+    width: 20px;
+    height: 46px;
+    left: 480px;
+    top: 5px;
+    border:2px solid #909090;
+}
+
+.overlay-away-logo {
+    width: 48px;
+    height: 48px;
+    left: 510px;
+    top: 5px;
+    background-size: 100% 100%;
+}
+
+.overlay-away-name {
+    left: 560px;
+}
+
+.overlay-away-score {
+    left: 660px;  
+}
+
+/* SCHEDULE WIDGET STUFF */
+
+.schedule-font {
+    font-family: "Fira Sans Condensed", Sans-serif;
+}
+
+.schedule-container {
+    position: absolute;
+    top: 180px;
+    left: 620px;
+    font-size:48px;
+}
+
+.schedule-background {
+    background-color: #ffe680;
+    opacity: 0.9;
+    position: absolute;
+    top: 150px;
+    left: 600px;
+    height: 700px;
+    width: 1000px;  
+        
+}
+
+.schedule-time-container {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;    
+}
+
+.schedule-time-block {
+    font-size:48px;
+    width:300px;
+    height:60px;
+    text-align:center;
+    line-height:60px;  
+}
+
+/* COUNTDOWN WIDGET STUFF */
+
+.countdown-background {
+    width: 400px;
+    height: 150px;
+    position: absolute;
+    top:200px;
+    left:760px;
+    background-image: linear-gradient(to bottom right, #606060, #101010);
+    border-radius: 5px;
+    margin: auto;
+}
+
+.countdown-text {
+    text-align: center;
+    font-family: "Roboto", Sans-serif;
+    font-weight: 700;
+    font-size: 90px;
+    color: white;    
+    line-height: 150px;
+}
+
+/* GAME STATE WIDGET STUFF */
+
+.gamestate-background {
+    width: 400px;
+    height: 50px;
+    position: absolute;
+    top:140px;
+    left:760px;
+    background-image: linear-gradient(to bottom right, #606060, #101010);
+    border-radius: 5px;
+    margin: auto;
+}
+
+.gamestate-text {
+    text-align: center;
+    font-family: "Roboto", Sans-serif;
+    font-weight: 700;
+    font-size: 36px;
+    color: white;    
+    line-height: 50px;
+}
+
+/* TEAM VS TEAM WIDGET STUFF */
+
+.teamversus-border {
+    background-image: linear-gradient(to bottom right, #606060, #101010);
+    border-radius: 5px;
+    margin: auto;
+}
+
+.teamversus-team-panel-position {
+    width: 1000px;
+    height: 400px;
+    position: absolute;
+    top:400px;
+    left:460px;    
+}
+
+.teamversus-background {
+    width: 960px;
+    height: 360px;
+    position: inherit;
+    top:20px;
+    left:20px;
+    background-image: linear-gradient(to bottom, darkgoldenrod, orange);
+    border-radius: 5px;
+    margin: auto;
+}
+
+.teamversus-name {
+    text-align: center;
+    font-family: "Roboto", Sans-serif;
+    font-weight: 700;
+    font-size: 60px;
+    color: white;    
+    line-height: 50px;
+}
+
+.teamversus-logo {
+    height:200px;
+    width:200px;
+    margin:auto;
+    background-size: 100% 100%;
+}
+
+.teamversus-table {
+    position:inherit;
+    top:50px;
+}
+
+.teamversus-cell {
+    width: 500px;
+}
+
+.teamversus-vstext {
+    position: inherit;
+    top: 155px;
+    left: 450px;
+    width:100px;
+    height:50px;
+    text-align: center;
+    font-family: "Roboto", Sans-serif;
+    font-weight: 700;
+    font-size: 60px;
+    color: white;    
+    line-height: 50px;
+}
+
+.teamversus-score-dimensions {
+    visibility: hidden;
+    width: 300px;
+    height: 300px;
+}
+
+.teamversus-score-home-position {
+    position: absolute;
+    top:450px;
+    left:200px;
+}
+
+.teamversus-score-away-position {
+    position: absolute;
+    top:450px;
+    right:200px;    
+}
+
+.teamversus-score-background-home {
+    width: 260px;
+    height: 260px;
+    position: inherit;
+    top:20px;
+    left:20px;
+    background-image: linear-gradient(to left, lightgrey, white);
+    border-radius: 5px;
+    margin: auto;
+}
+
+.teamversus-score-background-away {
+    width: 260px;
+    height: 260px;
+    position: inherit;
+    top:20px;
+    left:20px;
+    background-image: linear-gradient(to right, lightgrey, white);
+    border-radius: 5px;
+    margin: auto;
+}
+
+.teamversus-score-text {
+    text-align: center;
+    color: charcoal;
+    text-align: center;
+    font-family: "Roboto", Sans-serif;
+    font-weight: 700;
+    font-size: 90px;
+    line-height: 260px;
+}
+
+/* SCHEDULE PAGE STUFF */
+
+.schedule-body {
+  font-family: "Fira", Sans-serif;
+  font-weight: 700;
+  font-size: 90px;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  height: 1080px;
+  width: 1920px;
+  color: #DFFF00;
+}
+
+.schedule-first-background {
+  position: inherit;
+  bottom: 400px;
+  left: 500px;
+  width: 1920px;
+  height: 100px;
+  background-color: DarkTurquoise;
+}
+
+.schedule-second-background {
+  position: inherit;
+  bottom: 200px;
+  left: 300px;
+  width: 1920px;
+  height: 100px;
+  background-color: DarkTurquoise;
+}
+
+.schedule-first-text {
+    position: inherit;
+    left: 20px;
+    /*text-decoration: line-through;*/
+}
+
+.schedule-second-text {
+    position: inherit;
+    left: 20px;
+    /*text-decoration: line-through;*/
+}
+
+.schedule-logos {
+    position: absolute;
+    top: 50px;
+    left: 50px;
+}
+
+.schedule-logo-1 {
+    position: inherit;
+    left: 0px;
+    width: 150px;
+    height: 150px;
+    background-image: url("../images/warriors250.png");
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+.schedule-logo-2 {
+    position: inherit;
+    left: 200px;
+    width: 150px;
+    height: 150px;
+    background-image: url("../images/eagles_250.png");
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+.schedule-logo-3 {
+    position: inherit;
+    left: 400px;
+    width: 150px;
+    height: 150px;
+    background-image: url("../images/WaLi_250.png");
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+.schedule-logo-4 {
+    position: inherit;
+    left: 600px;
+    width: 150px;
+    height: 150px;
+    background-image: url("../images/swans_250.png");
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+.schedule-logo-back-1 {
+    position: absolute;
+    top: 100px;
+    left: 0px;
+    height: 70px;
+    width: 820px;
+    background-color: DarkTurquoise;
+}
+
+.schedule-logo-back-2 {
+    position: absolute;
+    top: 155px;
+    left: 0px;
+    height: 25px;
+    width: 740px;
+    background-color: #DFFF00;
+}

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game state banner</title>
+    
+    <link href="resource/style.css" rel="stylesheet" type="text/css">
+
+</head>
+<body class="chroma-key">
+    
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <!--<script src="jquery/jquery-3.4.1.min.js"></script>-->
+    <script type=text/javascript>
+   
+                    
+        // DEBUG PRINT FUNCTIONS
+        // There should be no calls for these in the code during production runs
+                 
+        function debugDump(text) {
+            var message = document.createElement('p');
+            var content = document.createTextNode('___ ' + text);
+            message.appendChild(content);
+            document.body.appendChild(message); 
+        }
+        
+        function debugDumpJson(obj) {
+            $.each(obj, function (k, v) {
+                debugDump(k + ' : ' + v);
+            });
+        }
+               
+        var serverIp = location.host.split(':')[0];       
+        
+        var graphics = {
+            logos: [],
+            homeLogo: null,
+            awayLogo: null
+        };
+        
+        function fancyTimeFormat(time)
+        {   
+            if (time>5998) {
+                return "99:59"; // prevent 3-digit minute numbers
+            }
+        
+            // Minutes and seconds
+            var mins = ~~(time / 60);
+            var secs = ~~time % 60;
+
+            var ret = "";
+
+            ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+            ret += "" + secs;
+            return ret;
+        }
+        
+        var lastClockRunning = "period";
+        var showingPopup = false;
+        var gameState = null;
+        
+        function calculateTimeToShow (value) {
+            var timeSec = 0;
+            var numberOfRunningClocks = 0;
+            var textToDisplay = "0:00";
+        
+            if (value.period.running) {
+                textToDisplay = fancyTimeFormat(value.period.time);
+                lastClockRunning = "period";
+            } 
+            else {
+                if (value.countdown.running) {
+                    textToDisplay = fancyTimeFormat(value.countdown.time);
+                    lastClockRunning = "countdown";
+                }
+                else {
+                    if (lastClockRunning != "countdown" || $("#gameClock").text() != "0:01") {
+                        textToDisplay = fancyTimeFormat(value[lastClockRunning].time);
+                    }
+                } 
+            }
+            
+            return textToDisplay;
+        }
+        
+        // WEBSOCKET AND MESSAGE PROCESSING OBJECT
+                        
+        var scoreboard = {
+            ws:          null,     // Websocket will be placed here
+            isNotDead:   false,    // true if no Ping-Pong events have been missed
+            
+            initialize: function() {
+                 
+                scoreboard.ws = null;
+                scoreboard.ws = new WebSocket("ws://" + serverIp + ":1337");
+                                
+                scoreboard.ws.onmessage = function (event) {
+                    $.each(JSON.parse(event.data), function( index, record ) {
+                        switch (index) {
+                            case 'state':
+                                $.each(record, function( key, value ) {
+                                    switch(key) {
+                                        case 'state':
+                                            switch(value) {
+                                                case 'reset':    
+                                                    if ($("#mainBar").is(":hidden")) {
+                                                        $("#mainBar").fadeIn();
+                                                    }
+                                                    $("#bannerText").css("font-style", "italic");
+                                                    $("#bannerText").text("Coming up...");
+                                                    break;
+                                                case 'halftime':    
+                                                    if ($("#mainBar").is(":hidden")) {
+                                                        $("#mainBar").fadeIn();
+                                                    }                                   
+                                                    $("#bannerText").text("Halftime");
+                                                    break;
+                                                default:    
+                                                    if ($("#mainBar").is(":visible")) {
+                                                        $("#mainBar").hide();
+                                                    }       
+                                            }
+                                            break;
+                                    }
+                                });
+                                break;
+                            case 'connected':
+                                $("#logLabel").text("Connection established");
+                                break;
+                        }
+                    });
+                
+                }; // scoreboard.ws.onmessage = function (event)
+                
+                scoreboard.ws.onerror = function () {
+                    scoreboard.ws = null;
+                    $("#logLabel").text("Socket error");
+                };
+                
+                scoreboard.ws.onclose = function () {
+                    scoreboard.ws = null;
+                    $("#logLabel").text("Connection closed");
+                };   
+            } // initialize: function()
+            
+        }; // var scoreboard = {...}
+                       
+        // OVERLAY INITIALISATION CODE
+        $(document).ready(function(){
+            $("#mainBar").hide();
+        
+            // resolves browser caching issues causing $.getJSON() to not load configuration correctly
+            $.ajaxSetup({ cache: false });
+                        
+            // immediately rebuild connection to scoreboard on page load
+            scoreboard.initialize();
+                        
+        });
+        
+        
+        
+    </script>
+        
+    <div id=mainBar class="gamestate-background">
+        <div id=bannerText class="gamestate-text"></div>  
+    </div>            
+</body>
+</html>

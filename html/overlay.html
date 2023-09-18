@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stream overlay</title>
+    
+    <link href="resource/style.css" rel="stylesheet" type="text/css">
+
+</head>
+<body class="chroma-key">
+    
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <!--<script src="jquery/jquery-3.4.1.min.js"></script>-->
+    <script type=text/javascript>
+   
+                    
+        // DEBUG PRINT FUNCTIONS
+        // There should be no calls for these in the code during production runs
+                 
+        function debugDump(text) {
+            var message = document.createElement('p');
+            var content = document.createTextNode('___ ' + text);
+            message.appendChild(content);
+            document.body.appendChild(message); 
+        }
+        
+        function debugDumpJson(obj) {
+            $.each(obj, function (k, v) {
+                debugDump(k + ' : ' + v);
+            });
+        }
+               
+        var serverIp = location.host.split(':')[0];       
+        
+        var graphics = {
+            logos: [],
+            homeLogo: null,
+            awayLogo: null
+        };
+        
+        function fancyTimeFormat(time)
+        {   
+            if (time>5998) {
+                return "99:59"; // prevent 3-digit minute numbers
+            }
+        
+            // Minutes and seconds
+            var mins = ~~(time / 60);
+            var secs = ~~time % 60;
+
+            var ret = "";
+
+            ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+            ret += "" + secs;
+            return ret;
+        }
+        
+        var lastClockRunning = "period";
+        var showingPopup = false;
+        var gameState = null;
+        
+        function calculateTimeToShow (value) {
+            var timeSec = 0;
+            var numberOfRunningClocks = 0;
+            var textToDisplay = "0:00";
+        
+            if (value.period.running) {
+                textToDisplay = fancyTimeFormat(value.period.time);
+                lastClockRunning = "period";
+            } 
+            else {
+                if (value.countdown.running) {
+                    textToDisplay = fancyTimeFormat(value.countdown.time);
+                    lastClockRunning = "countdown";
+                }
+                else {
+                    if (lastClockRunning != "countdown" || $("#gameClock").text() != "0:01") {
+                        textToDisplay = fancyTimeFormat(value[lastClockRunning].time);
+                    }
+                } 
+            }
+            
+            return textToDisplay;
+        }
+        
+        // WEBSOCKET AND MESSAGE PROCESSING OBJECT
+                        
+        var scoreboard = {
+            ws:          null,     // Websocket will be placed here
+            isNotDead:   false,    // true if no Ping-Pong events have been missed
+            
+            initialize: function() {
+                 
+                scoreboard.ws = null;
+                scoreboard.ws = new WebSocket("ws://" + serverIp + ":1337");
+                                
+                scoreboard.ws.onmessage = function (event) {
+                    $.each(JSON.parse(event.data), function( index, record ) {
+                        switch (index) {
+                            case 'state':
+                                $.each(record, function( key, value ) {
+                                    switch(key) {
+                                        case 'state':
+                                            gameState = value;
+                                            break;
+                                        case 'score':
+                                            $.each(value, function( team, score ) {
+                                                var scoreLabel = "#" + team + "Score";
+                                                if ( $(scoreLabel).text() != score) {
+                                                    $(scoreLabel).text(score);
+                                                }
+                                            });
+                                            break;
+                                        case 'clock':
+                                            var newTime = calculateTimeToShow(value);
+                                            
+                                            if ( $("#gameClock").text() != newTime ) {
+                                                $("#gameClock").text(newTime);
+                                            }
+                                            
+                                            if  (value.countdown.running) {
+                                                if (!showingPopup) {
+                                                    var text = (gameState == "halftime" ? "HALFTIME" : "STAND BY");
+                                                    showPopup(text);
+                                                }
+                                            }
+                                            else {
+                                                if (showingPopup) {
+                                                    hidePopup();
+                                                }
+                                            }
+                                            
+                                            break;
+                                        case 'periodNumber':
+                                            const periodLabel = [ '1st', '2nd', '3rd', '4th' ];
+                                            if ( $(period).text() != periodLabel[value-1] ) {
+                                                $(period).text(periodLabel[value-1]);
+                                            }
+                                            break;
+                                        case 'teamInfo':
+                                            $.each(value, function( team, info ) {
+                                                if (info.name != null) {
+                                                    var teamLabelField = "#" + team + "Name";
+                                                    var shortName = info.name.substr(0,3);
+                                                    if ($(teamLabelField).text() != shortName) {
+                                                        $(teamLabelField).text(shortName);
+                                                    }
+                                                }    
+                                                if (info.colour != null) {
+                                                    var teamColourBox = "#" + team + "Colour";
+                                                    if ($(teamColourBox).css("background-color") != info.colour) {
+                                                        $(teamColourBox).css("background-color", info.colour);
+                                                    }
+                                                }  
+                                                if (info.logo != graphics[team + "Logo"]) {
+                                                    graphics[team + "Logo"] = info.logo;
+                                                    var teamLogoBox = "#" + team + "Logo";
+                                                    if (info.logo == null) {
+                                                        $(teamLogoBox).css("background-image","none");
+                                                    } else {
+                                                        $(teamLogoBox).css("background-image",
+                                                            'url("/images/' + info.logo + '")');
+                                                    }
+                                                    console.log(info.logo);
+                                                }                                          
+                                            });
+                                            break;
+                                    }
+                                });
+                                break;
+                            case 'connected':
+                                $("#logLabel").text("Connection established");
+                                break;
+                        }
+                    });
+                
+                }; // scoreboard.ws.onmessage = function (event)
+                
+                scoreboard.ws.onerror = function () {
+                    scoreboard.ws = null;
+                    $("#logLabel").text("Socket error");
+                };
+                
+                scoreboard.ws.onclose = function () {
+                    scoreboard.ws = null;
+                    $("#logLabel").text("Connection closed");
+                };   
+            } // initialize: function()
+            
+        }; // var scoreboard = {...}
+        
+        function showPopup(text) {
+            $("#popupText").html(text);
+            $("#popup").animate({height: "50px"}, 
+                200, function() {
+                    $("#popupText").show(200);  
+            });
+            showingPopup = true;
+        }
+        
+        function hidePopup() {        
+            $("#popupText").hide(
+                100, function(){
+                    $("#popup").animate({height: "0px"}, 100);
+            });
+            showingPopup = false;
+        }
+               
+        // OVERLAY INITIALISATION CODE
+        $(document).ready(function(){
+        
+            // resolves browser caching issues causing $.getJSON() to not load configuration correctly
+            $.ajaxSetup({ cache: false });
+            
+            $("#popupText").hide();
+            
+            // immediately rebuild connection to scoreboard on page load
+            scoreboard.initialize();
+                        
+        });
+        
+        
+        
+    </script>
+    
+    <div id=popup class="overlay-popup">
+        <div id=popupText></div>
+    </div>
+    
+    <div id=mainBar class="overlay-main-panel">
+        <div id=period class="overlay-block overlay-period"></div>
+        <div id=gameClock class="overlay-block overlay-clock"></div>
+        <div id=homeColour class="overlay-block overlay-home-colour"></div>
+        <div id=homeLogo class="overlay-block overlay-home-logo"></div>
+        <div id=homeName class="overlay-block overlay-home-name"></div>
+        <div id=homeScore class="overlay-block overlay-home-score">0</div>
+        <div id=awayColour class="overlay-block overlay-away-colour"></div>
+        <div id=awayLogo class="overlay-block overlay-away-logo"></div>
+        <div id=awayName class="overlay-block overlay-away-name"></div>
+        <div id=awayScore class="overlay-block overlay-away-score">0</div>     
+    </div>            
+</body>
+</html>

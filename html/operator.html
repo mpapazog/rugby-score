@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Operator panel</title>
+    
+    <link href="resource/style.css" rel="stylesheet" type="text/css">
+
+</head>
+<body class="chroma-key">
+    
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <!--<script src="jquery/jquery-3.4.1.min.js"></script>-->
+    <script type=text/javascript>
+   
+                    
+        // DEBUG PRINT FUNCTIONS
+        // There should be no calls for these in the code during production runs
+                 
+        function debugDump(text) {
+            var message = document.createElement('p');
+            var content = document.createTextNode('___ ' + text);
+            message.appendChild(content);
+            document.body.appendChild(message); 
+        }
+        
+        function debugDumpJson(obj) {
+            $.each(obj, function (k, v) {
+                debugDump(k + ' : ' + v);
+            });
+        }
+        
+        const BACK_COLOUR_ACTIVATE      = '#3498db';
+        const BACK_COLOUR_DEACTIVATE    = 'maroon';
+        
+        var state = {
+            clocks: {
+                period: {
+                    time: 0,
+                    startTime: 0,
+                    running: false,
+                    uiItem: "#gameClock",
+                    uiToggle: "#gameClockToggle"
+                },
+                countdown: {
+                    time: 0,
+                    startTime: 1200,
+                    running: false,
+                    uiItem: "#countdown",
+                    uiToggle: "#countdownToggle"
+                }
+            }
+        };
+        
+        var graphics = {
+            logos: [],
+            homeLogo: null,
+            awayLogo: null
+        };
+        
+        var serverIp = location.host.split(':')[0];
+        
+        
+        function fancyTimeFormat(time)
+        {   
+            if (time>5998) {
+                return "99:59"; // prevent 3-digit minute numbers
+            }
+        
+            // Minutes and seconds
+            var mins = ~~(time / 60);
+            var secs = ~~time % 60;
+
+            var ret = "";
+
+            ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+            ret += "" + secs;
+            return ret;
+        }       
+                
+        function capitalize(word) {
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        }
+        
+        // WEBSOCKET AND MESSAGE PROCESSING OBJECT
+                        
+        var scoreboard = {
+            ws:          null,     // Websocket will be placed here
+            isNotDead:   false,    // true if no Ping-Pong events have been missed
+            
+            initialize: function() {
+                 
+                scoreboard.ws = null;
+                scoreboard.ws = new WebSocket("ws://" + serverIp + ":1337");
+                                
+                scoreboard.ws.onmessage = function (event) {
+                    $.each(JSON.parse(event.data), function( index, record ) {
+                        switch (index) {
+                            case 'state':
+                                $.each(record, function( key, value ) {
+                                    switch(key) {
+                                        case 'score':
+                                            $.each(value, function( team, score ) {
+                                                var pointsLabel = "#" + team + "Points";
+                                                if ( parseInt( $(pointsLabel).text() ) != score) {
+                                                    $(pointsLabel).text(score);
+                                                }
+                                            });
+                                            break;
+                                        case 'clock':
+                                            $.each(value, function( clock, attributes ) {
+                                                if (attributes.time != state.clocks[clock].time) {
+                                                    $(state.clocks[clock].uiItem).text(fancyTimeFormat(attributes.time));
+                                                }
+                                                                                 
+                                                if (attributes.running && $(state.clocks[clock].uiToggle).val() != "Pause") {
+                                                    $(state.clocks[clock].uiToggle).val("Pause");
+                                                    if (clock == 'period') {
+                                                        $(state.clocks[clock].uiToggle).css("background",BACK_COLOUR_DEACTIVATE);
+                                                    }
+                                                    state.clocks[clock].running = true;
+                                                } 
+                                                else if (!attributes.running && $(state.clocks[clock].uiToggle).val() != "Start") {
+                                                    $(state.clocks[clock].uiItem).text(fancyTimeFormat(attributes.time));
+                                                    $(state.clocks[clock].uiToggle).val("Start");
+                                                    if (clock == 'period') {
+                                                        $(state.clocks[clock].uiToggle).css("background",BACK_COLOUR_ACTIVATE);
+                                                    }
+                                                    state.clocks[clock].running = false;
+                                                }                                          
+                                            });
+                                            break;
+                                        case 'periodNumber':
+                                            if ( parseInt( $("#period").text() ) != value) {
+                                                $("#period").text(value);
+                                            }
+                                            if (value > 2 && !$("#halftime").attr("disabled")) {
+                                                $("#halftime").attr("disabled", true);
+                                            } else if (value < 3 && $("#halftime").attr("disabled")) {
+                                                $("#halftime").attr("disabled", false);
+                                            }
+                                            break;
+                                        case 'teamInfo':
+                                            $.each(value, function( team, info ) {
+                                                if (info.name != null) {
+                                                    var teamLabelField = "#" + team + "Name";
+                                                    if ($(teamLabelField).text() != info.name) {
+                                                        $(teamLabelField).text(info.name);
+                                                    }
+                                                }
+                                                if (info.colour != null) {
+                                                    var teamColourBox = "#" + team + "Colour";
+                                                    if ($(teamColourBox).val() != info.colour) {
+                                                        $(teamColourBox).val(info.colour);
+                                                    }
+                                                }
+                                                if (info.logo != graphics[team + "Logo"]) {
+                                                    graphics[team + "Logo"] = info.logo;
+                                                    var teamLogoBox = "#" + team + "Logo";
+                                                    if (info.logo == null) {
+                                                        $(teamLogoBox).css("background-image","none");
+                                                    } else {
+                                                        $(teamLogoBox).css("background-image",
+                                                            'url("/images/' + info.logo + '")');
+                                                    }
+                                                    console.log(info.logo);
+                                                }
+                                            });
+                                            break;
+                                    }
+                                });
+                                break;
+                            case 'logos':
+                                graphics.logos = [];
+                                record.forEach(function (file) {
+                                    graphics.logos.push(file);
+                                });
+                                break;
+                            case 'connected':
+                                $("#logLabel").text("Connection established");
+                                break;
+                        }
+                    });
+                
+                }; // scoreboard.ws.onmessage = function (event)
+                
+                scoreboard.ws.onerror = function () {
+                    scoreboard.ws = null;
+                    $("#logLabel").text("Socket error");
+                };
+                
+                scoreboard.ws.onclose = function () {
+                    scoreboard.ws = null;
+                    $("#logLabel").text("Connection closed");
+                };   
+            } // initialize: function()
+            
+        }; // var scoreboard = {...}
+        
+        
+        function modifyScore (team, adjustment) {
+            var textItem = "#" + team.toLowerCase() + 'Points';
+            
+            var oldScore = parseInt($(textItem).text());
+            
+            var newScore = oldScore + adjustment;
+            
+            if (newScore > -1) {
+                $(textItem).text(newScore);
+                
+                if (scoreboard.ws != null) {
+                    var retVal = { score: {} };
+                    retVal.score[team] = newScore;
+                
+                    scoreboard.ws.send(JSON.stringify(retVal));
+                }
+            }         
+        }
+        
+        function modifyPeriodNumber (adjustment) {
+            var newPeriodNumber = parseInt($("#period").text()) + adjustment;
+            
+            if ( newPeriodNumber>0 && newPeriodNumber<3 ) {
+                $("#period").text(newPeriodNumber);
+                
+                if (scoreboard.ws != null) {
+                    scoreboard.ws.send(JSON.stringify({updatePeriodNumber:newPeriodNumber}));
+                }
+            }
+        }
+        
+        function nextPeriod() {         
+            if (scoreboard.ws != null) {
+                scoreboard.ws.send(JSON.stringify({stopClock:'countdown'})); 
+                scoreboard.ws.send(JSON.stringify({stopClock:'period'}));
+            }
+            modifyPeriodNumber(1);
+        }
+        
+        function endPeriod() {
+            if (scoreboard.ws != null) {
+                scoreboard.ws.send(JSON.stringify({stopClock:'period'}));
+            }
+            setState('halftime');
+        }
+        
+        function toggleClock(name) {
+            var toggleButton = "#" + name + "Toggle";
+            
+            const clockApiName = {
+                gameClock: "period",
+                countdown: "countdown"
+            };
+            
+            if ( $(toggleButton).val().toLowerCase() == "start" ) {
+                if (scoreboard.ws != null) {
+                    scoreboard.ws.send(JSON.stringify({startClock:clockApiName[name]}));
+                }
+            } else {
+                if (scoreboard.ws != null) {
+                    scoreboard.ws.send(JSON.stringify({stopClock:clockApiName[name]}));
+                }
+            }
+            
+        }
+        
+        function setState(state) {
+            if (scoreboard.ws != null) {
+                scoreboard.ws.send(JSON.stringify({setState:state}));
+            }        
+        }
+        
+        function openTeamEditMode(team) {
+            var teamLabelContainer = "#" + team + "NameContainer",
+                teamLabelField     = "#" + team + "Name",
+                teamEditContainer  = "#" + team + "NameEditContainer",
+                teamEditField      = "#" + team + "NameEditBox";
+                
+            if ($(teamLabelField).text() != "no name") {
+                $(teamEditField).val($(teamLabelField).text());
+            } else {
+                $(teamEditField).val("");
+            }
+                
+            $(teamLabelContainer).hide();
+            $(teamEditContainer).show();     
+            $(teamEditField).focus();            
+        }
+        
+        function submitNameChange(team) {
+            var teamLabelContainer = "#" + team + "NameContainer",
+                teamLabelField     = "#" + team + "Name",
+                teamEditContainer  = "#" + team + "NameEditContainer",
+                teamEditField      = "#" + team + "NameEditBox";
+        
+            var newName = $.trim( $(teamEditField).val() ).toUpperCase();
+            
+            if (newName != "" && newName != $(teamLabelField).text()) {
+                var msg = {setTeamName:{}};
+                msg.setTeamName[team] = newName;
+                scoreboard.ws.send(JSON.stringify(msg));
+                $(teamLabelField).text(newName);
+            }
+            
+            $(teamEditContainer).hide(); 
+            $(teamLabelContainer).show();
+        }
+        
+        function submitColour(team) {
+            var box = "#" + team + "Colour";
+            
+            var msg = {setTeamColour:{}};
+            msg.setTeamColour[team] = $(box).val();
+            
+            scoreboard.ws.send(JSON.stringify(msg));
+        }
+        
+        function openClockEditMode(clock) {
+            var clockLabelContainer = "#" + clock + "Container",
+                clockLabelField     = "#" + clock,
+                clockSetButton      = "#" + clock + "Set",
+                clockEditContainer  = "#" + clock + "EditContainer",
+                clockEditField      = "#" + clock + "EditBox";
+                
+            $(clockEditField).val($(clockLabelField).text());
+                
+            $(clockSetButton).attr("disabled", true);
+            $(clockLabelContainer).hide();
+            $(clockEditContainer).show();
+            $(clockEditField).focus();    
+        }
+        
+        function submitClockSetting(clock) {
+            const clockApiName = {
+                gameClock: "period",
+                countdown: "countdown"
+            };
+            
+            var clockLabelContainer = "#" + clock + "Container",
+                clockLabelField     = "#" + clock,
+                clockSetButton      = "#" + clock + "Set",
+                clockEditContainer  = "#" + clock + "EditContainer",
+                clockEditField      = "#" + clock + "EditBox";
+        
+            var newTimeString = $.trim( $(clockEditField).val() );
+                        
+            if (newTimeString != $(clockLabelField).text() && newTimeString != '') {
+                var splitTime = newTimeString.split(":"),
+                    totalSeconds = 0;
+                    
+                if (splitTime.length == 2) {
+                    totalSeconds += parseInt(splitTime[0]) * 60;
+                    totalSeconds += parseInt(splitTime[1]);
+
+                    var msg = { 'updateClock': {} };
+                    msg['updateClock'][clockApiName[clock]] = totalSeconds;
+                    
+                    scoreboard.ws.send(JSON.stringify(msg));                    
+                }
+            }
+            
+            $(clockEditContainer).hide(); 
+            $(clockLabelContainer).show();
+            $(clockSetButton).attr("disabled", false);
+        }
+        
+        
+        function openNewGameMenu() {
+            $("#regularControls").hide();
+            populateNewGameLogoLists();
+            $("#newGameContainer").show();
+        }
+        
+        function closeNewGameMenu() {
+            $("#newGameContainer").hide();
+            $("#regularControls").show();
+        }
+        
+        function newGameSubmit() {
+            state.clocks.period.startTime = parseInt( $.trim( $("#newGamePeriodLengthEditBox").val() ) ) * 60;
+            state.clocks.countdown.startTime = parseInt( $.trim( $("#newGameHalftimeLengthEditBox").val() ) ) * 60;
+            var msg = {
+                'resetGame':{
+                    homeTeamName        : $.trim( $("#newGameHomeNameEditBox").val() ).toUpperCase(),
+                    homeTeamColour      : $("#newGameHomeColour").val(),
+                    homeTeamLogo        : $("#newGameHomeLogo option:selected").text(),
+                    awayTeamName        : $.trim( $("#newGameAwayNameEditBox").val() ).toUpperCase(),
+                    awayTeamColour      : $("#newGameAwayColour").val(),
+                    awayTeamLogo        : $("#newGameAwayLogo option:selected").text(),
+                    periodLengthSec     : state.clocks.period.startTime,
+                    halftimeLengthSec   : state.clocks.countdown.startTime
+                }
+            };
+            $("#homePoints").text("0");
+            $("#awayPoints").text("0");
+            $("#gameClock").text("0:00");
+            $("#countdown").text(fancyTimeFormat(msg.halftimeLengthSec));
+            scoreboard.ws.send(JSON.stringify(msg));
+            closeNewGameMenu();
+        }
+        
+        function populateNewGameLogoLists() {
+            $("#newGameHomeLogo").empty();
+            $("#newGameAwayLogo").empty();
+            var homeBox = document.getElementById("newGameHomeLogo");
+            var awayBox = document.getElementById("newGameAwayLogo");
+            var homeOpt = document.createElement('option');
+            homeBox.appendChild(homeOpt);
+            var awayOpt = document.createElement('option');
+            awayBox.appendChild(awayOpt);
+            var logoCount = graphics.logos.length;
+            for (var i=0; i<graphics.logos.length; i++) {
+                homeOpt = document.createElement('option');
+                awayOpt = document.createElement('option');
+                homeOpt.appendChild( document.createTextNode(graphics.logos[i]) );
+                awayOpt.appendChild( document.createTextNode(graphics.logos[i]) );
+                homeBox.appendChild(homeOpt);
+                awayBox.appendChild(awayOpt);
+            }
+        }
+                        
+        
+        // OVERLAY INITIALISATION CODE
+        $(document).ready(function(){
+        
+            // resolves browser caching issues causing $.getJSON() to not load configuration correctly
+            $.ajaxSetup({ cache: false });
+            
+            $("#homeNameEditContainer").hide();
+            $("#awayNameEditContainer").hide();
+            $("#newGameContainer").hide();
+            $("#gameClockEditContainer").hide();
+            $("#countdownEditContainer").hide();
+            $("#awayColour").val("#ffffff");
+            $("#awayNewColour").val("#ffffff");
+            $("#gameClockToggle").css("background",BACK_COLOUR_ACTIVATE);
+            $("#gameClockToggle").css("color","white");
+            $("#periodEnd").css("background",BACK_COLOUR_DEACTIVATE);
+            $("#periodEnd").css("color","white");
+            $("#periodNext").css("background",BACK_COLOUR_ACTIVATE);
+            $("#periodNext").css("color","white");
+            console.log(serverIp);
+                                    
+            // immediately rebuild connection to scoreboard on page load
+            scoreboard.initialize();
+        });
+        
+        
+        // Detect ENTER in text boxes        
+        $(document).on("keypress", "input", function(e){
+            if(e.which == 13){
+                switch ($(this).attr('id')) {
+                    case "homeNameEditBox":
+                        submitNameChange('home');
+                        break;
+                    case "awayNameEditBox":
+                        submitNameChange('away');
+                        break;
+                    case "gameClockEditBox":
+                        submitClockSetting('gameClock');
+                        break;
+                    case "countdownEditBox":
+                        submitClockSetting('countdown');
+                        break;
+                }
+            }
+        });
+        
+    </script>
+    
+    <div id=logLabel class="log-label">Not connected</div>
+    
+    <div id=regularControls>
+    <div id=toolBar class="tool-bar">
+        <table class="padded-table"><tr>
+            <td><input id=newGame type="button" value="New game" onclick="openNewGameMenu();" class="font-style font-small button-wide"/></td>
+            <td><input id=halftime type="button" value="Halftime" onclick="setState('halftime');" class="font-style font-small button-wide"/></td>
+            <td><input id=endGame type="button" value="End game" onclick="setState('endgame');" class="font-style font-small button-wide"/></td>
+        </tr></table>
+    </div>
+    
+    <div id=homeTeamPanel class="team-panel-container team-panel-container-home">
+        <div id=homeLabel class="font-style font-small">Home team</div>
+        <div id=homeNameContainer class="name-block">
+            <table class="padded-table"><tr>
+                <td><div id=homeLogo class="operator-logo"></div></td>
+                <td><div id=homeName class="font-style font-medium">no name</div></td>
+                <td><input id=homeNameEditMode type="button" value="🖉" onclick="openTeamEditMode('home');" class="font-style font-small"/></td>
+                <td><input id=homeColour type="color" onchange="submitColour('home');"></td>
+            </tr></table>
+        </div>
+        <div id=homeNameEditContainer class="name-block">
+            <table class="padded-table"><tr>
+                <td><input id=homeNameEditBox type="text" size="16" maxlength="15" class="font-style font-small"></td>
+                <td><input id=homeNameEditSubmit type="button" value="Submit" onclick="submitNameChange('home');" class="font-style font-small"/></td>
+            </tr></table>
+        </div>
+        <div id=homeScore class="score-panel">
+            <table class="team-panel-table"><tr>
+            <td><div id=homePointsLabel class="font-style font-small">Points</div></td>
+            <td><input id=homePointsMinus type="button" value="-" onclick="modifyScore('home', -1)" class="font-style font-small button-thin"/></td>
+            <td><div id=homePoints class="font-style font-medium">0</div></td>
+            <td><input id=homePointsPlus type="button" value="+" onclick="modifyScore('home', 1)" class="font-style font-small button-thin"/></td>
+            </tr><tr><td class="score-vertical-separator"></td></tr><tr><td></td>
+            <td><input id=homePointsPlusTwo type="button" value="+2" onclick="modifyScore('home', 2)" class="font-style font-small button-thin"/></td>
+            <td><input id=homePointsPlusThree type="button" value="+3" onclick="modifyScore('home', 3)" class="font-style font-small button-thin"/></td>
+            <td><input id=homePointsPlusFive type="button" value="+5" onclick="modifyScore('home', 5)" class="font-style font-small button-thin"/></td>
+            </tr></table>
+        </div>
+    </div>
+    
+    <div id=awayTeamPanel class="team-panel-container team-panel-container-away">
+        <div id=awayLabel class="font-style font-small">Away team</div>
+        <div id=awayNameContainer class="name-block">
+            <table class="padded-table"><tr>
+                <td><div id=awayLogo class="operator-logo"></div></td>
+                <td><div id=awayName class="font-style font-medium">no name</div></td>
+                <td><input id=awayNameEditMode type="button" value="🖉" onclick="openTeamEditMode('away');" class="font-style font-small"/></td>
+                <td><input id=awayColour type="color" onchange="submitColour('away');"></td>
+            </tr></table>
+        </div>
+        <div id=awayNameEditContainer class="name-block">
+            <table class="padded-table"><tr>
+                <td><input id=awayNameEditBox type="text" size="16" maxlength="15" class="font-style font-small"></td>
+                <td><input id=awayNameEditSubmit type="button" value="Submit" onclick="submitNameChange('away');" class="font-style font-small"/></td>
+            </tr></table>
+        </div>
+        <div id=awayScore class="score-panel">
+            <table class="team-panel-table"><tr>
+            <td><div id=awayPointsLabel class="font-style font-small">Points</div></td>
+            <td><input id=awayPointsMinus type="button" value="-" onclick="modifyScore('away', -1)" class="font-style font-small button-thin"/></td>
+            <td><div id=awayPoints class="font-style font-medium">0</div></td>
+            <td><input id=awayPointsPlus type="button" value="+" onclick="modifyScore('away', 1)" class="font-style font-small button-thin"/></td>
+            </tr><tr><td class="score-vertical-separator"></td></tr><tr><td></td>
+            <td><input id=awayPointsPlusTwo type="button" value="+2" onclick="modifyScore('away', 2)" class="font-style font-small button-thin"/></td>
+            <td><input id=awayPointsPlusThree type="button" value="+3" onclick="modifyScore('away', 3)" class="font-style font-small button-thin"/></td>
+            <td><input id=awayPointsPlusFive type="button" value="+5" onclick="modifyScore('away', 5)" class="font-style font-small button-thin"/></td>
+            </tr></table>
+        </div>
+    </div>
+    
+    <div id=clockPanel class="clock-panel-container">
+        <table class="padded-table"><tr>
+            <td><div><table>
+                <tr><td colspan="3"><div id=periodLabel class="font-style font-small clock-grid-width">Period</div></td></tr>
+                <tr>
+                    <td><input id=periodMinus type="button" value="-" onclick="modifyPeriodNumber(-1);" class="font-style font-small button-thin"/></td>
+                    <td><div id=period class="font-style font-medium">1</div></td>
+                    <td><input id=periodPlus type="button" value="+" onclick="modifyPeriodNumber(1);" class="font-style font-small button-thin"/></td>
+                </tr>
+                <tr>
+                    <td colspan="3">
+                        <table class="padded-table"><tr>
+                            <td><input id=periodEnd type="button" value="End" onclick="endPeriod();" class="font-style font-small button-medium"/></td>
+                            <td><input id=periodNext type="button" value="Next" onclick="nextPeriod();" class="font-style font-small button-medium"/></td>
+                        </tr></table>
+                    </td>
+                    
+                </tr>
+                
+            </table></div></td>
+            
+            <td class="spacer"></td>
+            
+            <td><div><table>
+                <tr><td colspan="2"><div id=gameClockLabel class="font-style font-medium clock-grid-width">Game clock</div></td></tr>
+                <tr><td colspan="2" style="height:80px;">
+                    <div id=gameClockContainer>
+                        <div id=gameClock class="font-style font-large">0:00</div>
+                    </div>
+                    <div id=gameClockEditContainer>
+                        <table class="padded-table"><tr>
+                            <td><input id=gameClockEditBox type="text" size="6" maxlength="5" class="font-style font-small"></td>
+                            <td><input id=gameClockEditSubmit type="button" value="Submit" onclick="submitClockSetting('gameClock');" class="font-style font-small"/></td>
+                        </tr></table>
+                    </div>
+                </td></tr>
+                <tr>
+                    <td><input id=gameClockToggle type="button" value="Start" onclick="toggleClock('gameClock');" class="font-style font-small button-medium"/></td>
+                    <td><input id=gameClockSet type="button" value="Set" onclick="openClockEditMode('gameClock');" class="font-style font-small button-medium"/></td>
+                </tr>
+            </table></div></td>
+            
+            <td class="spacer"></td>
+            
+            <td><div><table>
+                <tr><td colspan="2"><div id=countdownLabel class="font-style font-small clock-grid-width">Break timer</div></td></tr>
+                <tr><td colspan="2" style="height:60px;">
+                    <div id=countdownContainer>
+                        <div id=countdown class="font-style font-medium">0:00</div>
+                    </div>
+                    <div id=countdownEditContainer>
+                        <table class="padded-table"><tr>
+                            <td><input id=countdownEditBox type="text" size="6" maxlength="5" class="font-style font-small"></td>
+                            <td><input id=countdownEditSubmit type="button" value="Submit" onclick="submitClockSetting('countdown');" class="font-style font-small"/></td>
+                        </tr></table>
+                    </div>
+                </td></tr>
+                <tr>
+                    <td><input id=countdownToggle type="button" value="Start" onclick="toggleClock('countdown');" class="font-style font-small button-medium"/></td>
+                    <td><input id=countdownSet type="button" value="Set" onclick="openClockEditMode('countdown');" class="font-style font-small button-medium"/></td>
+                </tr>
+            </table></div></td>
+            
+        </tr></table>
+    </div>
+    </div>
+    
+    <div id=newGameContainer class="new-game-container">        
+        <div id=newGameMenu class="new-game-menu">
+            <table class="padded-table">
+                <tr><td colspan="2"><div id=newGameLabel class="font-style font-large">New game</div></td></tr>
+                
+                <tr><td class="vertical-spacer"></td></tr>
+                
+                <tr>
+                    <td class="font-style font-small cell-left-align">Home team</td>
+                    <td><input id=newGameHomeColour type="color"></td>
+                    <td><select id=newGameHomeLogo></select></td>
+                    <td class="cell-left-align"><input id=newGameHomeNameEditBox type="text" size="16" maxlength="15" class="font-style font-small" value="HOME"></td>
+                </tr>
+                <tr>
+                    <td class="font-style font-small cell-left-align">Away team</td>
+                    <td><input id=newGameAwayColour type="color"></td>
+                    <td><select id=newGameAwayLogo></select></td>
+                    <td class="cell-left-align"><input id=newGameAwayNameEditBox type="text" size="16" maxlength="15" class="font-style font-small" value="AWAY"></td>
+                </tr>
+                <tr>
+                    <td class="font-style font-small cell-left-align">Period length (min)</td>
+                    <td class="cell-left-align"><input id=newGamePeriodLengthEditBox type="text" size="4" maxlength="15" class="font-style font-small" value="40"></td>
+                </tr>
+                <tr>
+                    <td class="font-style font-small cell-left-align">Halftime length (min)</td>
+                    <td class="cell-left-align"><input id=newGameHalftimeLengthEditBox type="text" size="4" maxlength="15" class="font-style font-small" value="15"></td>
+                </tr>
+                
+                <tr><td class="vertical-spacer"></td></tr>
+                
+                <tr><td colspan="2">
+                    <input id=newGameStart type="button" value="Start" onclick="newGameSubmit();" class="font-style font-small button-wide"/>
+                    <input id=newGamecancel type="button" value="Cancel" onclick="closeNewGameMenu();" class="font-style font-small button-wide"/>
+                </td></tr>
+            </table>
+        </div>
+    </div>
+        
+</body>
+</html>
